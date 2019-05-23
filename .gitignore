@@ -1,0 +1,7 @@
+*.Rhistory
+.Rproj.user
+*.Rproj
+.RData
+/vignettes/cache/
+*.[Rr][Dd][SsAa]
+*.txt

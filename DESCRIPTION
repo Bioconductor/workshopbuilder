@@ -1,0 +1,33 @@
+Package: workshopbuilder
+Type: Package
+Title: This package compiles workshops from different locations into a central
+    bookdown workshop repository
+Version: 0.0.1
+Authors@R: c(
+    person("Marcel", "Ramos", email = "marcel.ramos@roswellpark.org",
+        role = c("aut", "cre")),
+    person("Levi", "Waldron", email = "lwaldron.research@gmail.com",
+        role = "aut"),
+    person("Lorena", "Pantano", email = "lorena.pantano@gmail.com",
+        role = "aut"),
+    person("Sean", "Davis", email = "seandavi@gmail.com",
+        role = "aut")
+    )
+Description: This package takes a series of workshop R packages and combines
+    them into an authorized repository location. This will be the basis for
+    a workshop bookdown build.
+Depends:
+    R (>= 3.6.0), R (< 3.7.0)
+Imports:
+    remotes
+Suggests:
+    BiocStyle,
+    knitr,
+    rmarkdown,
+    testthat
+Remotes:
+    waldronlab/MultiAssayWorkshop,
+    waldronlab/curatedTCGAWorkshop
+License: Artistic-2.0
+Encoding: UTF-8
+
