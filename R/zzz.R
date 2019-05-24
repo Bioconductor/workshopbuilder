@@ -14,7 +14,7 @@
             env[[variable]] <- value
         },
         get = function(variable) {
-            env[["variable"]]
+            env[[variable]]
         }
     )
 })

@@ -4,7 +4,8 @@
 \alias{installWorkshops}
 \title{Install workshops from locations as indicated by main repository}
 \usage{
-installWorkshops(repository = .options$get("MAIN_REPO"),
+
+  installWorkshops(repository = workshopbuilder:::.options$get("MAIN_REPO"),
   location = "github")
 }
 \arguments{

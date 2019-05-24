@@ -63,7 +63,8 @@
 #'
 #' @export
 installWorkshops <-
-    function(repository = .options$get("MAIN_REPO"), location="github")
+    function(repository = workshopbuilder:::.options$get("MAIN_REPO"),
+        location="github")
 {
     remotes <- .installIssues(repository, location)
 }
