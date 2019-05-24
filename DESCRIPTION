@@ -19,15 +19,13 @@ Description: This package takes a series of workshop R packages and combines
 Depends:
     R (>= 3.6.0), R (< 3.7.0)
 Imports:
-    remotes
+    remotes,
+    jsonlite
 Suggests:
     BiocStyle,
     knitr,
     rmarkdown,
     testthat
-Remotes:
-    waldronlab/MultiAssayWorkshop,
-    waldronlab/curatedTCGAWorkshop
 License: Artistic-2.0
 Encoding: UTF-8
 RoxygenNote: 6.1.1

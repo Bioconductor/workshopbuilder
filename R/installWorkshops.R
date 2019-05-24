@@ -62,6 +62,8 @@
 #' @param location Website location of the main repository (default 'github')
 #'
 #' @export
-installWorkshops <- function(repository, location="github") {
+installWorkshops <-
+    function(repository = .options$get("MAIN_REPO"), location="github")
+{
     remotes <- .installIssues(repository, location)
 }
