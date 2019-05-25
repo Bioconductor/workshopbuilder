@@ -1,7 +1,7 @@
 .onLoad <- function(...) {
     .options$set("BOOK_REPO", "Bioconductor/BiocWorkshops2019")
     .options$set("LOCAL_REPO",
-        normalizePath("~/BiocWorkshops2019"))
+        file.path(normalizePath("~"), "BiocWorkshops2019"))
 }
 
 .options <- local({
