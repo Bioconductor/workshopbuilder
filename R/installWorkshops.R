@@ -58,13 +58,39 @@
 #' from the workshop URLs tagged as `[Workshop]`
 #   '
 #' @param repository A single string indicating the 'username/repository' of the
-#'   main book-building GitHub repository
+#'   main book-building GitHub repository (defaults to package option
+#'   'BOOK_REPO')
 #' @param location Website location of the main repository (default 'github')
 #'
 #' @export
 installWorkshops <-
-    function(repository = workshopbuilder:::.options$get("MAIN_REPO"),
+    function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
         location="github")
 {
-    remotes <- .installIssues(repository, location)
+    .installIssues(repository, location)
 }
+
+cloneBookRepo <-
+    function(
+        repository = workshopbuilder:::.options$get("BOOK_REPO"),
+        location = workshopbuilder:::.options$get("LOCAL_REPO")
+    )
+{
+    git2r::clone(repository, location)
+    if (!dir.exists(dirname(location)))
+        dir.create(dirname(location), recursive = TRUE)
+    bookloc <- file.path(location, repository)
+    workshopbuilder:::.options$set("LOCAL_REPO", bookloc)
+    bookloc
+}
+
+transferVignettes <- function(remotes) {
+    bookloc <- workshopbuilder:::.options$get("LOCAL_REPO")
+    pkgNames <- basename(remotes)
+    vigfiles <- vapply(pkgNames, function(pkg) {
+        instLoc <- system.file(package = pkg)
+        list.files(instLoc, pattern = ".[Rr][Mm}[Dd]", full.names = TRUE)
+    }, character(1L))
+    file.copy(vigfiles, to = bookloc)
+}
+
