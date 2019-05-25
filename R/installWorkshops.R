@@ -70,20 +70,22 @@ installWorkshops <-
     .installIssues(repository, location)
 }
 
+#' @export
 cloneBookRepo <-
     function(
         repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        location = workshopbuilder:::.options$get("LOCAL_REPO")
+        local = workshopbuilder:::.options$get("LOCAL_REPO")
     )
 {
-    git2r::clone(repository, location)
-    if (!dir.exists(dirname(location)))
-        dir.create(dirname(location), recursive = TRUE)
-    bookloc <- file.path(location, repository)
+    git2r::clone(repository, local)
+    if (!dir.exists(dirname(local)))
+        dir.create(dirname(local), recursive = TRUE)
+    bookloc <- file.path(local, repository)
     workshopbuilder:::.options$set("LOCAL_REPO", bookloc)
     bookloc
 }
 
+#' @export
 transferVignettes <- function(remotes) {
     bookloc <- workshopbuilder:::.options$get("LOCAL_REPO")
     pkgNames <- basename(remotes)

@@ -5,12 +5,13 @@
 \title{Install workshops from locations as indicated by main repository}
 \usage{
 
-  installWorkshops(repository = workshopbuilder:::.options$get("MAIN_REPO"),
+  installWorkshops(repository = workshopbuilder:::.options$get("BOOK_REPO"),
   location = "github")
 }
 \arguments{
 \item{repository}{A single string indicating the 'username/repository' of the
-main book-building GitHub repository}
+main book-building GitHub repository (defaults to package option
+'BOOK_REPO')}
 
 \item{location}{Website location of the main repository (default 'github')}
 }
