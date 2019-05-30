@@ -45,6 +45,15 @@
     desc::desc_add_remotes(remotes, local_repo)
 }
 
+.addImports <- function(local_repo, reposrefs) {
+    pkgNames <- basename(reposrefs)
+    insivisible(
+        lapply(pkgNames, function(pkg) {
+            desc::desc_set_dep(pkg, local_repo)
+        })
+    )
+}
+
 .installIssues <- function(repository, location) {
     rebranch <- .readIssues(repository, location)
     apply(rebranch, 1L, function(x) {
