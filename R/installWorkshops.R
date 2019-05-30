@@ -25,9 +25,10 @@
     issues <- jsonlite::fromJSON(
         paste0(location, repository, "/issues")
     )
-    iswork <- grepl("[Workshop]", issues$title, fixed = TRUE)
+    issues <- issues[c("body", "title")]
+    iswork <- grepl("[Workshop]", issues[["title"]], fixed = TRUE)
     issues <- lapply(issues, function(g) g[iswork])
-    bodies <- strsplit(issues$body, "\\s")
+    bodies <- strsplit(issues[["body"]], "\\s")
     urlidx <- vapply(bodies, function(x) which(grepl("https", x))[[1L]], integer(1L))
     repos <- mapply(function(x, y) x[y], bodies, urlidx)
     repos <- gsub("\\.git", "", repos)
