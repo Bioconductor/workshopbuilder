@@ -86,12 +86,16 @@ cloneBookRepo <-
         local = workshopbuilder:::.options$get("LOCAL_REPO")
     )
 {
-    git2r::clone(repository, local)
-    if (!dir.exists(dirname(local)))
-        dir.create(dirname(local), recursive = TRUE)
-    bookloc <- file.path(local, repository)
-    workshopbuilder:::.options$set("LOCAL_REPO", bookloc)
-    bookloc
+    if (!dir.exists(local))
+        dir.create(local, recursive = TRUE)
+    urlStart <- "https://github.com"
+    git2r::clone(file.path(urlStart, repository), local)
+    current <- workshopbuilder:::.options$get("LOCAL_REPO")
+
+    if (!identical(local, current))
+        workshopbuilder:::.options$set("LOCAL_REPO", local)
+
+    workshopbuilder:::.options$get("LOCAL_REPO")
 }
 
 #' @export
