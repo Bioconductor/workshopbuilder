@@ -69,7 +69,7 @@
     validPKGS <- .checkDESC(rebranch)
     apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
         repo <- paste(x[[1]], x[[2]], sep = "@")
-        BiocManager::install(repo)
+        BiocManager::install(repo, ask = FALSE)
     })
 }
 
