@@ -55,9 +55,19 @@
     )
 }
 
+.checkDESC <- function(branchdf) {
+    apply(branchdf, 1L, function(x) {
+        RCurl::url.exists(
+        file.path("https://github.com", x[[1L]], "tree", x[[2L]], "DESCRIPTION")
+        )
+    })
+}
+
 .installIssues <- function(repository, location) {
     rebranch <- .readIssues(repository, location)
-    apply(rebranch, 1L, function(x) {
+    ## check that DESCRIPTION file is there
+    validPKGS <- .checkDESC(rebranch)
+    apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
         remotes::install_github(repo = x[[1]], ref = x[[2]])
     })
 }
