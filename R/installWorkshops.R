@@ -68,7 +68,8 @@
     ## check that DESCRIPTION file is there
     validPKGS <- .checkDESC(rebranch)
     apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
-        remotes::install_github(repo = x[[1]], ref = x[[2]])
+        repo <- paste(x[[1]], x[[2]], sep = "@")
+        BiocManager::install(repo)
     })
 }
 
