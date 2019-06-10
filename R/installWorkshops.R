@@ -3,7 +3,8 @@
     branches <- basename(remotes[hasBranch])
     bremotes <- gsub("\\/tree.*", "", remotes)
     bremotes <- file.path(basename(dirname(bremotes)), basename(bremotes))
-    data.frame(repos = bremotes, refs = ifelse(hasBranch, branches, "master"))
+    data.frame(repos = bremotes, refs = ifelse(hasBranch, branches, "master"),
+        stringsAsFactors = FALSE)
 }
 
 .getRemotesOnline <- function(repository, location, branch) {
@@ -19,7 +20,7 @@
     trimws(strsplit(dcf, "[, \n]+")[[1]])
 }
 
-.readIssues <- function(repository, location) {
+.readIssues <- function(repository, location = "github") {
     location <- switch(location, github = "https://api.github.com/repos/",
         stop("Non-GitHub locations not yet supported"))
     issues <- jsonlite::fromJSON(
@@ -35,6 +36,16 @@
     .repobranch(repos)
 }
 
+.warnNoDESC <- function(branchdf) {
+    validPKGS <- .checkDESC(branchdf)
+    invalid <- branchdf[!validPKGS, "repos"]
+    warning(
+        "Repositories without a valid DESCRIPTION file:\n",
+        paste(paste0("  ", invalid), collapse = ",\n")
+    )
+    branchdf[validPKGS, , drop = FALSE]
+}
+
 ## git2r::clone repository first and get local location
 .addRemotes <- function(local_repo, reposrefs) {
     remotes <- apply(reposrefs, 1L, function(line) {
@@ -46,11 +57,12 @@
     desc::desc_add_remotes(remotes, local_repo)
 }
 
-.addImports <- function(local_repo, reposrefs) {
-    pkgNames <- basename(reposrefs)
-    insivisible(
+.addImports <- function(local_repo, repos) {
+    pkgNames <- basename(repos)
+    descfile <- file.path(local_repo, "DESCRIPTION")
+    invisible(
         lapply(pkgNames, function(pkg) {
-            desc::desc_set_dep(pkg, local_repo)
+            desc::desc_set_dep(pkg, type = "Imports", file = descfile)
         })
     )
 }
@@ -69,7 +81,7 @@
     validPKGS <- .checkDESC(rebranch)
     apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
         repo <- paste(x[[1]], x[[2]], sep = "@")
-        BiocManager::install(repo, ask = FALSE)
+        BiocManager::install(repo, ask = FALSE, build_vignettes = TRUE)
     })
 }
 
@@ -108,6 +120,38 @@ cloneBookRepo <-
         workshopbuilder:::.options$set("LOCAL_REPO", local)
 
     workshopbuilder:::.options$get("LOCAL_REPO")
+}
+
+#' @export
+getWorkshops <-
+    function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
+        location="github")
+{
+    reposREF <- .readIssues(repository = repository, location = location)
+    .warnNoDESC(reposREF)
+}
+
+#' @export
+addWorkshops <-
+    function(reposREF,
+        local = workshopbuilder:::.options$get("LOCAL_REPO")
+    )
+{
+        reposREF <- rbind.data.frame(reposREF,
+            data.frame(repos="rstudio/bookdown", refs="master"))
+        reposinREF <- paste0(
+            reposREF[[1L]],
+            ifelse(reposREF[[2L]] == "master", "", paste0("@", reposREF[[2]]))
+        )
+        remotes <- .readRemotes(file.path(local, "DESCRIPTION"))
+        newremotes <- !(reposinREF %in% remotes)
+        if (any(newremotes)) {
+            reposREF <- reposREF[newremotes, , drop = FALSE]
+            .addRemotes(local, reposREF)
+            repoNames <- basename(reposREF[[1L]])
+            .addImports(local, repoNames)
+        }
+        desc::desc(file = local)
 }
 
 #' @export
