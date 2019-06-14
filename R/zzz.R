@@ -2,6 +2,8 @@
     .options$set("BOOK_REPO", "Bioconductor/BiocWorkshops2019")
     .options$set("LOCAL_REPO",
         file.path(normalizePath("~"), "BiocWorkshops2019"))
+    .options$set("REPOS_PATH",
+        file.path(normalizePath("~"), "Bioconductor", "Workshops"))
 }
 
 .options <- local({

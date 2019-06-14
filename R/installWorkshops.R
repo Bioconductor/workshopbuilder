@@ -20,29 +20,47 @@
     trimws(strsplit(dcf, "[, \n]+")[[1]])
 }
 
-.readIssues <- function(repository, location = "github") {
-    location <- switch(location, github = "https://api.github.com/repos/",
-        stop("Non-GitHub locations not yet supported"))
-    issues <- jsonlite::fromJSON(
-        paste0(location, repository, "/issues")
+.getIssues <-
+    function(repository, location_url = "https://api.github.com/repos/") {
+    jsonlite::fromJSON(
+        paste0(location_url, repository, "/issues")
     )
-    issues <- issues[c("body", "title")]
-    iswork <- grepl("[Workshop]", issues[["title"]], fixed = TRUE)
-    issues <- lapply(issues, function(g) g[iswork])
-    bodies <- strsplit(issues[["body"]], "\\s")
-    urlidx <- vapply(bodies, function(x) which(grepl("https", x))[[1L]], integer(1L))
+}
+
+.selectWorkshopElements <- function(issueList) {
+    title <- issueList[["title"]]
+    if (is.null(title))
+        stop("<internal> Include issue list with title")
+    isWorkshop <- grepl("[Workshop]", title, fixed = TRUE)
+    lapply(issueList, function(x) x[isWorkshop])
+}
+
+.setRepoInBody <- function(issueList, schemes = "https") {
+    issueBodies <- issueList[["body"]]
+    bodies <- strsplit(issueBodies, "\\s")
+    urlidx <- vapply(bodies, function(x) which(grepl(schemes, x))[[1L]], integer(1L))
     repos <- mapply(function(x, y) x[y], bodies, urlidx)
-    repos <- gsub("\\.git", "", repos)
-    .repobranch(repos)
+    issueList[["body"]] <- gsub("\\.git", "", repos)
+    issueList
+}
+
+.readIssues <-
+    function(repository, location_url = "https://api.github.com/repos/") {
+    issues <- .getIssues(repository, location_url)
+    issues <- issues[c("body", "title")]
+    issues <- .selectWorkshopElements(issues)
+    issues <- .setRepoInBody(issues)
+    .repobranch(issues[["body"]])
 }
 
 .warnNoDESC <- function(branchdf) {
     validPKGS <- .checkDESC(branchdf)
     invalid <- branchdf[!validPKGS, "repos"]
-    warning(
-        "Repositories without a valid DESCRIPTION file:\n",
-        paste(paste0("  ", invalid), collapse = ",\n")
-    )
+    if (length(invalid))
+        warning(
+            "Repositories without a valid DESCRIPTION file:\n",
+            paste(paste0("  ", invalid), collapse = ",\n")
+        )
     branchdf[validPKGS, , drop = FALSE]
 }
 
@@ -75,13 +93,18 @@
     })
 }
 
-.installIssues <- function(repository, location) {
-    rebranch <- .readIssues(repository, location)
+.installIssues <- function(rebranch, local) {
     ## check that DESCRIPTION file is there
     validPKGS <- .checkDESC(rebranch)
     apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
-        repo <- paste(x[[1]], x[[2]], sep = "@")
-        BiocManager::install(repo, ask = FALSE, build_vignettes = TRUE)
+        repo <- file.path(local, basename(x[[1]]))
+        tryCatch({
+            devtools::install(repo, ask = FALSE, build_vignettes = TRUE,
+                repos = BiocManager::repositories(), dependencies = TRUE)
+        }, error = function(err) {
+            stop("Unable to install ", basename(repo),
+                 "\n", conditionMessage(err))
+        })
     })
 }
 
@@ -98,9 +121,12 @@
 #' @export
 installWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        location="github")
+        local = workshopbuilder:::.options$get("REPOS_PATH"),
+        location = "https://api.github.com/repos/")
 {
-    .installIssues(repository, location)
+    rebranch <- .readIssues(repository, location)
+    cloneIssueRepos(rebranch, local)
+    .installIssues(rebranch, local)
 }
 
 #' @export
@@ -122,10 +148,28 @@ cloneBookRepo <-
     workshopbuilder:::.options$get("LOCAL_REPO")
 }
 
+cloneIssueRepos <-
+    function(
+        repos,
+        local = workshopbuilder:::.options$get("REPOS_PATH")
+    )
+{
+    if (!dir.exists(local))
+        dir.create(local, recursive = TRUE)
+    urlStart <- "https://github.com"
+    apply(repos, 1L, function(x) {
+        local_repo <- file.path(local, basename(x[[1L]]))
+        if (!dir.exists(local_repo))
+            git2r::clone(url = file.path(urlStart, x[[1L]]),
+                local_path = local_repo, branch = x[[2]])
+    })
+}
+
+
 #' @export
 getWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        location="github")
+        location="https://api.github.com/repos/")
 {
     reposREF <- .readIssues(repository = repository, location = location)
     .warnNoDESC(reposREF)
@@ -164,4 +208,5 @@ transferVignettes <- function(remotes) {
     }, character(1L))
     file.copy(vigfiles, to = bookloc)
 }
+
 

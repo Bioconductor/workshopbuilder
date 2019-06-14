@@ -6,7 +6,8 @@
 \usage{
 
   installWorkshops(repository = workshopbuilder:::.options$get("BOOK_REPO"),
-  location = "github")
+  local = workshopbuilder:::.options$get("REPOS_PATH"),
+  location = "https://api.github.com/repos/")
 }
 \arguments{
 \item{repository}{A single string indicating the 'username/repository' of the
