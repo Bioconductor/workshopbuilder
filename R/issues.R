@@ -2,6 +2,12 @@
 # issues <- issues[c("title", "body", "number")]
 # issues <- .selectWorkshopElements(issues)
 # issues <- .setRepoInBody(issues)
+#
+#
+# rebranch <- .readIssues(repository = "Bioconductor/BiocWorkshops2019")
+# local <- workshopbuilder:::.options$get("REPOS_PATH")
+#
+# .installIssues(rebranch, local)
 
 # gh:::gh_build_request("/repos/:owner/:repo/issues/:issue_number/comments",
 #     method = "POST",

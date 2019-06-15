@@ -96,15 +96,16 @@
 .installIssues <- function(rebranch, local) {
     ## check that DESCRIPTION file is there
     validPKGS <- .checkDESC(rebranch)
+    builddir <- file.path(local, "buildout")
+    if (!dir.exists(builddir))
+        dir.create(builddir)
     apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
-        repo <- file.path(local, basename(x[[1]]))
-        tryCatch({
-            devtools::install(repo, ask = FALSE, build_vignettes = TRUE,
-                repos = BiocManager::repositories(), dependencies = TRUE)
-        }, error = function(err) {
-            stop("Unable to install ", basename(repo),
-                 "\n", conditionMessage(err))
-        })
+        try({
+            BiocManager::install(x[[1L]], ref = x[[2L]],
+                build_opts = c("--no-resave-data", "--no-manual"),
+                dependencies = TRUE)
+            }, outFile = file.path(builddir, paste0(basename(x[[1L]]), ".out"))
+        )
     })
 }
 
