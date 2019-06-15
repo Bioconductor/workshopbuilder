@@ -123,8 +123,11 @@
 installWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
         local = workshopbuilder:::.options$get("REPOS_PATH"),
-        location = "https://api.github.com/repos/")
+        location = "https://api.github.com/repos/",
+        ncpus = getOption("Ncpus", 1L))
 {
+    on.exit(options(Ncpus = options("Ncpus")))
+    options(Ncpus = ncpus)
     rebranch <- .readIssues(repository, location)
     cloneIssueRepos(rebranch, local)
     .installIssues(rebranch, local)
