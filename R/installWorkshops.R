@@ -100,12 +100,17 @@
     if (!dir.exists(builddir))
         dir.create(builddir)
     apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
-        try({
-            BiocManager::install(x[[1L]], ref = x[[2L]],
-                build_opts = c("--no-resave-data", "--no-manual"),
-                dependencies = TRUE)
-            }, outFile = file.path(builddir, paste0(basename(x[[1L]]), ".out"))
-        )
+        capture.output({
+            tryCatch({
+                BiocManager::install(x[[1L]], ref = x[[2L]],
+                    build_opts = c("--no-resave-data", "--no-manual"),
+                    dependencies = TRUE, build_vignettes = TRUE, ask = FALSE)
+                }, error = function(e) {
+                    warning("Unable to install package: ", x[[1L]],
+                        "\n", conditionMessage(e))
+                })
+        }, file = file.path(builddir, paste0(basename(x[[1L]]), ".out")),
+        type = "output")
     })
 }
 
