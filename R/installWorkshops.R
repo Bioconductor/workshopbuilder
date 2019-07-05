@@ -134,7 +134,7 @@ installWorkshops <-
     on.exit(options(Ncpus = options("Ncpus")))
     options(Ncpus = ncpus)
     rebranch <- .readIssues(repository, location)
-    cloneIssueRepos(rebranch, local)
+    getIssueRepos(rebranch, local)
     .installIssues(rebranch, local)
 }
 
@@ -157,7 +157,8 @@ cloneBookRepo <-
     workshopbuilder:::.options$get("LOCAL_REPO")
 }
 
-cloneIssueRepos <-
+#' @export
+getIssueRepos <-
     function(
         repos,
         local = workshopbuilder:::.options$get("REPOS_PATH")
@@ -171,6 +172,8 @@ cloneIssueRepos <-
         if (!dir.exists(local_repo))
             git2r::clone(url = file.path(urlStart, x[[1L]]),
                 local_path = local_repo, branch = x[[2]])
+        else
+            git2r::pull(repo = local_repo)
     })
 }
 
@@ -208,14 +211,28 @@ addWorkshops <-
 }
 
 #' @export
-transferVignettes <- function(remotes) {
-    bookloc <- workshopbuilder:::.options$get("LOCAL_REPO")
-    pkgNames <- basename(remotes)
+transferVignettes <-
+    function(
+        remotes, local = workshopbuilder:::.options$get("LOCAL_REPO")
+    )
+{
+    pkgNames <- basename(remotes[["repos"]])
     vigfiles <- vapply(pkgNames, function(pkg) {
         instLoc <- system.file(package = pkg)
         list.files(instLoc, pattern = ".[Rr][Mm}[Dd]", full.names = TRUE)
     }, character(1L))
-    file.copy(vigfiles, to = bookloc)
+    ## remove heads here
+    file.copy(vigfiles, to = local)
 }
 
+#' @export
+getStatus <- function(local = workshopbuilder:::.options$get("REPOS_PATH"),
+    buildFolder = "buildout") {
+    outReport <- file.path(local, buildFolder)
+    reportFiles <- list.files(outReport, full.names = TRUE, pattern = ".out")
+    lapply(reportFiles, function(txt) {
+        lines <- trimws(readLines(txt))
+        lines[nchar(lines) != 0L]
+    })
+}
 

@@ -2,8 +2,7 @@
 # issues <- issues[c("title", "body", "number")]
 # issues <- .selectWorkshopElements(issues)
 # issues <- .setRepoInBody(issues)
-#
-#
+
 # rebranch <- .readIssues(repository = "Bioconductor/BiocWorkshops2019")
 # local <- workshopbuilder:::.options$get("REPOS_PATH")
 #

@@ -2,6 +2,8 @@
 
 export(addWorkshops)
 export(cloneBookRepo)
+export(getIssueRepos)
+export(getStatus)
 export(getWorkshops)
 export(installWorkshops)
 export(transferVignettes)
