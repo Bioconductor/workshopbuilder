@@ -1,4 +1,5 @@
 .repobranch <- function(remotes) {
+    remotes <- remotes[["location"]]
     hasBranch <- grepl("tree", remotes, fixed = TRUE)
     branches <- basename(remotes[hasBranch])
     bremotes <- gsub("\\/tree.*", "", remotes)
@@ -35,23 +36,35 @@
     lapply(issueList, function(x) x[isWorkshop])
 }
 
-.setRepoInBody <- function(issueList, schemes = "https") {
+.setRepoMetadata <- function(issueList, schemes = "https") {
     issueBodies <- issueList[["body"]]
     bodies <- strsplit(issueBodies, "\\s")
     urlidx <- vapply(bodies, function(x) which(grepl(schemes, x))[[1L]], integer(1L))
     repos <- mapply(function(x, y) x[y], bodies, urlidx)
-    issueList[["body"]] <- gsub("\\.git", "", repos)
+    issueList[["location"]] <- gsub("\\.git", "", repos)
+    issueList[["repository"]] <- basename(issueList[["location"]])
+    issueList[["owner"]] <- basename(dirname(issueList[["location"]]))
+
+    remotes <- issueList[["location"]]
+    hasBranch <- grepl("tree", remotes, fixed = TRUE)
+    branches <- basename(remotes[hasBranch])
+    bremotes <- gsub("\\/tree.*", "", remotes)
+
+    issueList[["repoowner"]] <-
+        file.path(basename(dirname(bremotes)), basename(bremotes))
+    issueList[["refs"]] <- ifelse(hasBranch, branches, "master")
     issueList
 }
 
 .readIssues <-
-    function(repository, location_url = "https://api.github.com/repos/") {
+    function(repository, location_url = "https://api.github.com/repos/",
+        fields = c("body", "title", "number")) {
     issues <- .getIssues(repository, location_url)
-    issues <- issues[c("body", "title")]
+    issues <- issues[fields]
     issues <- .selectWorkshopElements(issues)
-    issues <- .setRepoInBody(issues)
-    .repobranch(issues[["body"]])
+    .setRepoMetadata(issues)
 }
+
 
 .warnNoDESC <- function(branchdf) {
     validPKGS <- .checkDESC(branchdf)
@@ -133,7 +146,8 @@ installWorkshops <-
 {
     on.exit(options(Ncpus = options("Ncpus")))
     options(Ncpus = ncpus)
-    rebranch <- .readIssues(repository, location)
+    remotes <- .readIssues(repository, location)
+    rebranch <- .repobranch(remotes)
     getIssueRepos(rebranch, local)
     .installIssues(rebranch, local)
 }
@@ -183,7 +197,8 @@ getWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
         location="https://api.github.com/repos/")
 {
-    reposREF <- .readIssues(repository = repository, location = location)
+    remotes <- .readIssues(repository = repository, location = location)
+    reposREF <- .repobranch(remotes)
     .warnNoDESC(reposREF)
 }
 
@@ -230,9 +245,44 @@ getStatus <- function(local = workshopbuilder:::.options$get("REPOS_PATH"),
     buildFolder = "buildout") {
     outReport <- file.path(local, buildFolder)
     reportFiles <- list.files(outReport, full.names = TRUE, pattern = ".out")
+    shopnames <- gsub("\\.out", "", basename(reportFiles))
+    reportFiles <- setNames(reportFiles, shopnames)
     lapply(reportFiles, function(txt) {
         lines <- trimws(readLines(txt))
         lines[nchar(lines) != 0L]
     })
 }
 
+#' @export
+postStatus <- function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
+    local = workshopbuilder:::.options$get("REPOS_PATH"),
+    buildFolder = "buildout") {
+    statList <- Filter(length, getStatus(local, buildFolder))
+    if (!length(statList))
+        stop("No install '.out' files found in directory:\n ",
+            file.path(local, buildFolder), "\n 'installWorkshops()' first")
+    remotes <- .readIssues(repository)
+    buildout <- remotes[["repository"]] %in% names(statList)
+    remotes <- lapply(remotes, `[`, buildout)
+    remotes[["buildout"]] <-
+        statList[match(names(statList), remotes[["repository"]])]
+    len <- seq_len(unique(lengths(remotes)))
+    for (i in len) {
+        workshop <- lapply(remotes, `[`, i)
+        issuenumber <- workshop[["number"]]
+        feedback <- unname(unlist(workshop[["buildout"]]))
+        httr::POST(
+            url = file.path("https://api.github.com/repos",
+                workshopbuilder:::.options$get("BOOK_REPO"), "issues",
+                issuenumber, "comments"),
+            body = jsonlite::toJSON(list(body = paste(feedback, sep = "\n"))),
+            httr::content_type("application/json"),
+            httr::accept_json(),
+            httr::add_headers(Authorization = paste("token", .getToken()))
+        )
+    }
+}
+
+.getToken <- function() {
+    Sys.getenv("GITHUB_TOKEN", Sys.getenv("GITHUB_PAT", ""))
+}
