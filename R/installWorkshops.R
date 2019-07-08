@@ -106,7 +106,7 @@
     })
 }
 
-.installIssues <- function(rebranch, local) {
+.installIssues <- function(rebranch, local, ...) {
     ## check that DESCRIPTION file is there
     validPKGS <- .checkDESC(rebranch)
     builddir <- file.path(local, "buildout")
@@ -117,7 +117,8 @@
             tryCatch({
                 BiocManager::install(x[[1L]], ref = x[[2L]],
                     build_opts = c("--no-resave-data", "--no-manual"),
-                    dependencies = TRUE, build_vignettes = TRUE, ask = FALSE)
+                    dependencies = TRUE, build_vignettes = TRUE, ask = FALSE,
+                    ...)
                 }, error = function(e) {
                     warning("Unable to install package: ", x[[1L]],
                         "\n", conditionMessage(e))
@@ -142,27 +143,27 @@ installWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
         local = workshopbuilder:::.options$get("REPOS_PATH"),
         location = "https://api.github.com/repos/",
-        ncpus = getOption("Ncpus", 1L))
+        ncpus = getOption("Ncpus", 1L), ...)
 {
     on.exit(options(Ncpus = options("Ncpus")))
     options(Ncpus = ncpus)
     remotes <- .readIssues(repository, location)
     rebranch <- .repobranch(remotes)
     getIssueRepos(rebranch, local)
-    .installIssues(rebranch, local)
+    .installIssues(rebranch, local, ...)
 }
 
 #' @export
 cloneBookRepo <-
     function(
         repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        local = workshopbuilder:::.options$get("LOCAL_REPO")
+        local_repo = workshopbuilder:::.options$get("LOCAL_REPO")
     )
 {
-    if (!dir.exists(local))
-        dir.create(local, recursive = TRUE)
+    if (!dir.exists(local_repo))
+        dir.create(local_repo, recursive = TRUE)
     urlStart <- "https://github.com"
-    git2r::clone(file.path(urlStart, repository), local)
+    git2r::clone(file.path(urlStart, repository), local_repo)
     current <- workshopbuilder:::.options$get("LOCAL_REPO")
 
     if (!identical(local, current))
@@ -205,7 +206,7 @@ getWorkshops <-
 #' @export
 addWorkshops <-
     function(reposREF,
-        local = workshopbuilder:::.options$get("LOCAL_REPO")
+        local_repo = workshopbuilder:::.options$get("LOCAL_REPO")
     )
 {
         reposREF <- rbind.data.frame(reposREF,
@@ -214,30 +215,31 @@ addWorkshops <-
             reposREF[[1L]],
             ifelse(reposREF[[2L]] == "master", "", paste0("@", reposREF[[2]]))
         )
-        remotes <- .readRemotes(file.path(local, "DESCRIPTION"))
+        remotes <- .readRemotes(file.path(local_repo, "DESCRIPTION"))
         newremotes <- !(reposinREF %in% remotes)
         if (any(newremotes)) {
             reposREF <- reposREF[newremotes, , drop = FALSE]
-            .addRemotes(local, reposREF)
+            .addRemotes(local_repo, reposREF)
             repoNames <- basename(reposREF[[1L]])
-            .addImports(local, repoNames)
+            .addImports(local_repo, repoNames)
         }
-        desc::desc(file = local)
+        desc::desc(file = local_repo)
 }
 
 #' @export
 transferVignettes <-
     function(
-        remotes, local = workshopbuilder:::.options$get("LOCAL_REPO")
+        remotes, local_repo = workshopbuilder:::.options$get("LOCAL_REPO"),
+        repositories
     )
 {
-    pkgNames <- basename(remotes[["repos"]])
+    pkgNames <- remotes[["repository"]]
     vigfiles <- vapply(pkgNames, function(pkg) {
         instLoc <- system.file(package = pkg)
         list.files(instLoc, pattern = ".[Rr][Mm}[Dd]", full.names = TRUE)
     }, character(1L))
     ## remove heads here
-    file.copy(vigfiles, to = local)
+    file.copy(vigfiles, to = local_repo)
 }
 
 #' @export
