@@ -33,7 +33,7 @@
 .selectWorkshopElements <- function(issueFrame) {
     title <- issueFrame[["title"]]
     if (is.null(title))
-        stop("<internal> Include issue list with title")
+        stop("<internal> Include issue data.frame with 'title' column")
     isWorkshop <- grepl("[Workshop]", title, fixed = TRUE)
     issueFrame[isWorkshop, ]
 }
@@ -112,25 +112,27 @@
     })
 }
 
-.installIssues <- function(rebranch, local, ...) {
-    ## check that DESCRIPTION file is there
-    validPKGS <- .checkDESC(rebranch)
+.installIssues <- function(repos_data, local, ...) {
     builddir <- file.path(local, "buildout")
     if (!dir.exists(builddir))
         dir.create(builddir)
-    apply(rebranch[validPKGS, , drop = FALSE], 1L, function(x) {
+    apply(repos_data, 1L, function(x) {
         capture.output({
             tryCatch({
-                BiocManager::install(x[[1L]], ref = x[[2L]],
+                x[["build"]] <- TRUE
+                BiocManager::install(x[["repoowner"]], ref = x[["refs"]],
                     build_opts = c("--no-resave-data", "--no-manual"),
                     dependencies = TRUE, build_vignettes = TRUE, ask = FALSE,
                     ...)
                 }, error = function(e) {
                     warning("Unable to install package: ", x[[1L]],
                         "\n", conditionMessage(e))
+                    x[["build"]] <- FALSE
                 })
-        }, file = file.path(builddir, paste0(basename(x[[1L]]), ".out")),
-        type = "output")
+            }, file = file.path(builddir, paste0(basename(x[[1L]]), ".out")),
+            type = "output"
+        )
+        x
     })
 }
 
@@ -148,14 +150,13 @@
 installWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
         local = workshopbuilder:::.options$get("REPOS_PATH"),
-        location = "https://api.github.com/repos/",
+        location = "https://api.github.com/repos",
         ncpus = getOption("Ncpus", 1L), ...)
 {
     on.exit(options(Ncpus = options("Ncpus")))
     options(Ncpus = ncpus)
     remotes <- .readIssues(repository, location)
-    rebranch <- .repobranch(remotes)
-    getIssueRepos(rebranch, local)
+    getIssueRepos(remotes, local)
     .installIssues(rebranch, local, ...)
 }
 
@@ -182,17 +183,16 @@ cloneBookRepo <-
 getIssueRepos <-
     function(
         repos,
-        local = workshopbuilder:::.options$get("REPOS_PATH")
+        repos_path = workshopbuilder:::.options$get("REPOS_PATH")
     )
 {
     if (!dir.exists(local))
         dir.create(local, recursive = TRUE)
-    urlStart <- "https://github.com"
     apply(repos, 1L, function(x) {
-        local_repo <- file.path(local, basename(x[[1L]]))
+        local_repo <- file.path(repos_path, x[["repository"]])
         if (!dir.exists(local_repo))
-            git2r::clone(url = file.path(urlStart, x[[1L]]),
-                local_path = local_repo, branch = x[[2]])
+            git2r::clone(url = x[["location"]],
+                local_path = local_repo, branch = x[["refs"]])
         else
             git2r::pull(repo = local_repo)
     })
@@ -202,7 +202,7 @@ getIssueRepos <-
 #' @export
 getWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        location="https://api.github.com/repos/")
+        location="https://api.github.com/repos")
 {
     remotes <- .readIssues(repository = repository, location = location)
     reposREF <- .repobranch(remotes)
@@ -236,16 +236,23 @@ addWorkshops <-
 transferVignettes <-
     function(
         remotes, local_repo = workshopbuilder:::.options$get("LOCAL_REPO"),
-        repositories
+        repo_path = workshopbuilder:::.options$get("REPOS_PATH")
     )
 {
+    ## build results add a "build" TRUE / FALSE column
+    remotes <- remotes[remotes[["build"]], ]
     pkgNames <- remotes[["repository"]]
     vigfiles <- vapply(pkgNames, function(pkg) {
-        instLoc <- system.file(package = pkg)
-        list.files(instLoc, pattern = ".[Rr][Mm}[Dd]", full.names = TRUE)
+        vigloc <- file.path(repo_path, pkg, "vignettes")
+        list.files(vigloc, pattern = "\\.[Rr][Mm][Dd]", full.names = TRUE)
     }, character(1L))
-    ## remove heads here
-    file.copy(vigfiles, to = local_repo)
+
+    lapply(vigfiles, function(file) {
+        viglines <- readLines(file)
+        newVig <- file.path(local_repo, file)
+        linerange <- seq(min(grep("^#\\s*\\w+", viglines)), length(viglines))
+        writeLines(viglines[linerange], con = newVig)
+    })
 }
 
 #' @export
