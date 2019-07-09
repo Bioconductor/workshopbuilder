@@ -60,7 +60,7 @@
 }
 
 .readIssues <-
-    function(repository, location_url = "https://api.github.com/repos/",
+    function(repository, location_url = "https://api.github.com/repos",
         fields = c("body", "title", "number")) {
     issues <- .getIssues(repository, location_url)
     issues <- do.call(function(...) {
