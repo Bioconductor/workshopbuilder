@@ -19,8 +19,9 @@ Description: This package takes a series of workshop R packages and combines
 Depends:
     R (>= 3.6.0), R (< 3.7.0)
 Imports:
+    BiocManager,
     git2r,
-    remotes,
+    httr,
     jsonlite,
     RCurl
 Suggests:
