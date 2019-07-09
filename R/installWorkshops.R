@@ -22,10 +22,12 @@
 }
 
 .getIssues <-
-    function(repository, location_url = "https://api.github.com/repos/") {
-    jsonlite::fromJSON(
-        paste0(location_url, repository, "/issues")
-    )
+    function(repository, location_url = "https://api.github.com/repos") {
+    endpoint <- file.path(location_url, repository, "issues")
+    ## assume there are only two pages
+    unlist(lapply(1:2, function(n)
+        httr::content(httr::GET(paste0(endpoint, "?page=", n)))
+    ), recursive = FALSE)
 }
 
 .selectWorkshopElements <- function(issueList) {
