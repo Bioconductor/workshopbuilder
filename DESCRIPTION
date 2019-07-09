@@ -2,7 +2,7 @@ Package: workshopbuilder
 Type: Package
 Title: This package compiles workshops from different locations into a central
     bookdown workshop repository
-Version: 0.0.3
+Version: 0.0.4
 Authors@R: c(
     person("Marcel", "Ramos", email = "marcel.ramos@roswellpark.org",
         role = c("aut", "cre")),

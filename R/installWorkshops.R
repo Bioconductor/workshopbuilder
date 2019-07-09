@@ -30,39 +30,43 @@
     ), recursive = FALSE)
 }
 
-.selectWorkshopElements <- function(issueList) {
-    title <- issueList[["title"]]
+.selectWorkshopElements <- function(issueFrame) {
+    title <- issueFrame[["title"]]
     if (is.null(title))
         stop("<internal> Include issue list with title")
     isWorkshop <- grepl("[Workshop]", title, fixed = TRUE)
-    lapply(issueList, function(x) x[isWorkshop])
+    issueFrame[isWorkshop, ]
 }
 
-.setRepoMetadata <- function(issueList, schemes = "https") {
-    issueBodies <- issueList[["body"]]
+.setRepoMetadata <- function(issueFrame, schemes = "https") {
+    issueBodies <- issueFrame[["body"]]
     bodies <- strsplit(issueBodies, "\\s")
-    urlidx <- vapply(bodies, function(x) which(grepl(schemes, x))[[1L]], integer(1L))
+    urlidx <- vapply(bodies, function(x)
+        which(grepl(schemes, x))[[1L]], integer(1L))
     repos <- mapply(function(x, y) x[y], bodies, urlidx)
-    issueList[["location"]] <- gsub("\\.git", "", repos)
-    issueList[["repository"]] <- basename(issueList[["location"]])
-    issueList[["owner"]] <- basename(dirname(issueList[["location"]]))
+    issueFrame[["location"]] <- gsub("\\.git", "", repos)
+    issueFrame[["repository"]] <- basename(issueFrame[["location"]])
+    issueFrame[["owner"]] <- basename(dirname(issueFrame[["location"]]))
 
-    remotes <- issueList[["location"]]
+    remotes <- issueFrame[["location"]]
     hasBranch <- grepl("tree", remotes, fixed = TRUE)
     branches <- basename(remotes[hasBranch])
     bremotes <- gsub("\\/tree.*", "", remotes)
 
-    issueList[["repoowner"]] <-
+    issueFrame[["repoowner"]] <-
         file.path(basename(dirname(bremotes)), basename(bremotes))
-    issueList[["refs"]] <- ifelse(hasBranch, branches, "master")
-    issueList
+    issueFrame[["refs"]] <- ifelse(hasBranch, branches, "master")
+    issueFrame
 }
 
 .readIssues <-
     function(repository, location_url = "https://api.github.com/repos/",
         fields = c("body", "title", "number")) {
     issues <- .getIssues(repository, location_url)
-    issues <- issues[fields]
+    issues <- do.call(function(...) {
+        rbind.data.frame(..., stringsAsFactors = FALSE) },
+        lapply(ff, `[`, fields)
+    )
     issues <- .selectWorkshopElements(issues)
     .setRepoMetadata(issues)
 }
