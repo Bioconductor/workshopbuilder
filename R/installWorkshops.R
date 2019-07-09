@@ -65,7 +65,7 @@
     issues <- .getIssues(repository, location_url)
     issues <- do.call(function(...) {
         rbind.data.frame(..., stringsAsFactors = FALSE) },
-        lapply(ff, `[`, fields)
+        lapply(issues, `[`, fields)
     )
     issues <- .selectWorkshopElements(issues)
     .setRepoMetadata(issues)
