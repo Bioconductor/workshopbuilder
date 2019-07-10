@@ -120,15 +120,15 @@
     res <- apply(repos_data, 1L, function(x) {
         capture.output({
             tryCatch({
-                x[["build"]] <- TRUE
+                x[["build"]] <- FALSE
                 BiocManager::install(x[["ownerrepo"]], ref = x[["refs"]],
                     build_opts = c("--no-resave-data", "--no-manual"),
                     dependencies = TRUE, build_vignettes = TRUE, ask = FALSE,
                     ...)
+                x[["build"]] <- TRUE
                 }, error = function(e) {
                     warning("Unable to install package: ", x[["ownerrepo"]],
                         "\n", conditionMessage(e))
-                    x[["build"]] <- FALSE
                 })
             }, file = file.path(builddir, paste0(basename(x[[1L]]), ".out")),
             type = "output"
