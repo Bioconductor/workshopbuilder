@@ -52,7 +52,7 @@
     owner <- basename(dirname(location))
     issueFrame[["repository"]] <- repo
     issueFrame[["owner"]] <- owner
-    issueFrame[["repoowner"]] <- file.path(repo, owner)
+    issueFrame[["ownerrepo"]] <- file.path(owner, repo)
 
     hasBranch <- grepl("tree", repoURL, fixed = TRUE)
     branches <- basename(repoURL[hasBranch])
@@ -117,16 +117,16 @@
     builddir <- file.path(local, "buildout")
     if (!dir.exists(builddir))
         dir.create(builddir)
-    apply(repos_data, 1L, function(x) {
+    res <- apply(repos_data, 1L, function(x) {
         capture.output({
             tryCatch({
                 x[["build"]] <- TRUE
-                BiocManager::install(x[["repoowner"]], ref = x[["refs"]],
+                BiocManager::install(x[["ownerrepo"]], ref = x[["refs"]],
                     build_opts = c("--no-resave-data", "--no-manual"),
                     dependencies = TRUE, build_vignettes = TRUE, ask = FALSE,
                     ...)
                 }, error = function(e) {
-                    warning("Unable to install package: ", x[[1L]],
+                    warning("Unable to install package: ", x[["ownerrepo"]],
                         "\n", conditionMessage(e))
                     x[["build"]] <- FALSE
                 })
@@ -135,6 +135,7 @@
         )
         x
     })
+    as.data.frame(t(res), stringsAsFactors = FALSE)
 }
 
 #' Install workshops from locations as indicated by main repository
