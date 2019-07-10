@@ -158,7 +158,7 @@ installWorkshops <-
     options(Ncpus = ncpus)
     remotes <- .readIssues(repository, location)
     getIssueRepos(remotes, local)
-    .installIssues(rebranch, local, ...)
+    .installIssues(remotes, local, ...)
 }
 
 #' @export
