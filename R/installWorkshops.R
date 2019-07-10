@@ -186,8 +186,8 @@ getIssueRepos <-
         repos_path = workshopbuilder:::.options$get("REPOS_PATH")
     )
 {
-    if (!dir.exists(local))
-        dir.create(local, recursive = TRUE)
+    if (!dir.exists(repos_path))
+        dir.create(repos_path, recursive = TRUE)
     apply(repos, 1L, function(x) {
         local_repo <- file.path(repos_path, x[["repository"]])
         if (!dir.exists(local_repo))
