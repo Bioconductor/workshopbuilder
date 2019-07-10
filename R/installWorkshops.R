@@ -38,23 +38,24 @@
     issueFrame[isWorkshop, ]
 }
 
-.setRepoMetadata <- function(issueFrame, schemes = "https") {
+.setRepoMetadata <- function(issueFrame, schemes = "http[s]*") {
     issueBodies <- issueFrame[["body"]]
     bodies <- strsplit(issueBodies, "\\s")
-    urlidx <- vapply(bodies, function(x)
-        which(grepl(schemes, x))[[1L]], integer(1L))
-    repos <- mapply(function(x, y) x[y], bodies, urlidx)
-    issueFrame[["location"]] <- gsub("\\.git", "", repos)
-    issueFrame[["repository"]] <- basename(issueFrame[["location"]])
-    issueFrame[["owner"]] <- basename(dirname(issueFrame[["location"]]))
+    urlidx <- vapply(bodies, function(x) min(grep(schemes, x)), integer(1L))
 
-    remotes <- issueFrame[["location"]]
-    hasBranch <- grepl("tree", remotes, fixed = TRUE)
-    branches <- basename(remotes[hasBranch])
-    bremotes <- gsub("\\/tree.*", "", remotes)
+    repos <- mapply(`[`, bodies, urlidx)
+    repoURL <- gsub("\\.git", "", repos)
+    location <- gsub("\\/tree.*", "", repoURL)
+    issueFrame[["location"]] <- location
 
-    issueFrame[["repoowner"]] <-
-        file.path(basename(dirname(bremotes)), basename(bremotes))
+    repo <- basename(location)
+    owner <- basename(dirname(location))
+    issueFrame[["repository"]] <- repo
+    issueFrame[["owner"]] <- owner
+    issueFrame[["repoowner"]] <- file.path(repo, owner)
+
+    hasBranch <- grepl("tree", repoURL, fixed = TRUE)
+    branches <- basename(repoURL[hasBranch])
     issueFrame[["refs"]] <- ifelse(hasBranch, branches, "master")
     issueFrame
 }
