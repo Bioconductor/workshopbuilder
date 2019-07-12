@@ -130,7 +130,7 @@
                     warning("Unable to install package: ", x[["ownerrepo"]],
                         "\n", conditionMessage(e))
                 })
-            }, file = file.path(builddir, paste0(basename(x[[1L]]), ".out")),
+            }, file = file.path(builddir, x[["repository"]], ".out"),
             type = "output"
         )
         x
