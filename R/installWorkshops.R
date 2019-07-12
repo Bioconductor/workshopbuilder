@@ -1,14 +1,6 @@
-.getRemotesOnline <- function(repository, location, branch) {
-    baseurl <- switch(location, github = "https://raw.githubusercontent.com")
-    desc <- file.path(baseurl, repository, branch, "DESCRIPTION")
-    tf <- tempfile()
-    download.file(desc, tf)
-    .readRemotes(tf)
-}
-
 .readRemotes <- function(descfile) {
     dcf <- read.dcf(descfile, "Remotes")
-    trimws(strsplit(dcf, "[, \n]+")[[1]])
+    trimws(strsplit(dcf, "[, \n]+")[[1L]])
 }
 
 .getIssues <-
