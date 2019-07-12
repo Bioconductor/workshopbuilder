@@ -1,13 +1,3 @@
-.repobranch <- function(remotes) {
-    remotes <- remotes[["location"]]
-    hasBranch <- grepl("tree", remotes, fixed = TRUE)
-    branches <- basename(remotes[hasBranch])
-    bremotes <- gsub("\\/tree.*", "", remotes)
-    bremotes <- file.path(basename(dirname(bremotes)), basename(bremotes))
-    data.frame(repos = bremotes, refs = ifelse(hasBranch, branches, "master"),
-        stringsAsFactors = FALSE)
-}
-
 .getRemotesOnline <- function(repository, location, branch) {
     baseurl <- switch(location, github = "https://raw.githubusercontent.com")
     desc <- file.path(baseurl, repository, branch, "DESCRIPTION")
@@ -61,17 +51,32 @@
 }
 
 .readIssues <-
-    function(repository, location_url = "https://api.github.com/repos",
-        fields = c("body", "title", "number")) {
+    function(repository, location_url, fields = c("body", "title", "number"),
+        local_repos = workshopbuilder:::.options$get("REPOS_PATH")) {
     issues <- .getIssues(repository, location_url)
     issues <- do.call(function(...) {
         rbind.data.frame(..., stringsAsFactors = FALSE) },
         lapply(issues, `[`, fields)
     )
     issues <- .selectWorkshopElements(issues)
-    .setRepoMetadata(issues)
+    issues <- .setRepoMetadata(issues)
+    repos <- Filter(function(x) {x != "buildout"}, list.files(local_repos))
+    if (all(issues[["repository"]] %in% repos))
+        issues <- .addPackageName(issues)
+    issues
 }
 
+.addPackageName <- function(reposREF,
+    repos_path = workshopbuilder:::.options$get("REPOS_PATH"))
+{
+    res <- apply(reposREF, 1L, function(x) {
+        local_repo <- file.path(repos_path, x[["repository"]])
+        descfile <- desc::description$new(file.path(local_repo, "DESCRIPTION"))
+        x[["Package"]] <- descfile$get("Package")
+        x
+    })
+    as.data.frame(t(res), stringsAsFactors = FALSE)
+}
 
 .warnNoDESC <- function(branchdf) {
     validPKGS <- .checkDESC(branchdf)
@@ -152,13 +157,13 @@
 installWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
         local = workshopbuilder:::.options$get("REPOS_PATH"),
-        location = "https://api.github.com/repos",
+        location_url = "https://api.github.com/repos",
         ncpus = getOption("Ncpus", 1L), ...)
 {
     on.exit(options(Ncpus = options("Ncpus")))
     options(Ncpus = ncpus)
-    remotes <- .readIssues(repository, location)
-    getIssueRepos(remotes, local)
+    remotes <- .readIssues(repository, location_url)
+    remotes <- getIssueRepos(remotes, local)
     .installIssues(remotes, local, ...)
 }
 
@@ -175,8 +180,8 @@ cloneBookRepo <-
     git2r::clone(file.path(urlStart, repository), local_repo)
     current <- workshopbuilder:::.options$get("LOCAL_REPO")
 
-    if (!identical(local, current))
-        workshopbuilder:::.options$set("LOCAL_REPO", local)
+    if (!identical(local_repo, current))
+        workshopbuilder:::.options$set("LOCAL_REPO", local_repo)
 
     workshopbuilder:::.options$get("LOCAL_REPO")
 }
@@ -192,23 +197,23 @@ getIssueRepos <-
         dir.create(repos_path, recursive = TRUE)
     apply(repos, 1L, function(x) {
         local_repo <- file.path(repos_path, x[["repository"]])
-        if (!dir.exists(local_repo))
+        if (!dir.exists(local_repo)) {
             git2r::clone(url = x[["location"]],
                 local_path = local_repo, branch = x[["refs"]])
-        else
+        } else
             git2r::pull(repo = local_repo)
     })
+    repos
 }
 
 
 #' @export
 getWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        location="https://api.github.com/repos")
+        location_url = "https://api.github.com/repos")
 {
-    remotes <- .readIssues(repository = repository, location = location)
-    reposREF <- .repobranch(remotes)
-    .warnNoDESC(reposREF)
+    remotes <- .readIssues(repository, location_url)
+    .warnNoDESC(remotes)
 }
 
 #' @export
@@ -217,13 +222,12 @@ addWorkshops <-
         local_repo = workshopbuilder:::.options$get("LOCAL_REPO")
     )
 {
-        reposREF <- rbind.data.frame(reposREF,
-            data.frame(repos="rstudio/bookdown", refs="master"))
+        reposREF <- data.frame(ownerrepo="rstudio/bookdown", refs="master")
         reposinREF <- paste0(
             reposREF[[1L]],
             ifelse(reposREF[[2L]] == "master", "", paste0("@", reposREF[[2]]))
         )
-        remotes <- .readRemotes(file.path(local_repo, "DESCRIPTION"))
+        localremotes <- .readRemotes(file.path(local_repo, "DESCRIPTION"))
         newremotes <- !(reposinREF %in% remotes)
         if (any(newremotes)) {
             reposREF <- reposREF[newremotes, , drop = FALSE]
@@ -273,12 +277,12 @@ getStatus <- function(local = workshopbuilder:::.options$get("REPOS_PATH"),
 #' @export
 postStatus <- function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
     local = workshopbuilder:::.options$get("REPOS_PATH"),
-    buildFolder = "buildout") {
+    buildFolder = "buildout", location_url = "https://api.github.com/repos") {
     statList <- Filter(length, getStatus(local, buildFolder))
     if (!length(statList))
         stop("No install '.out' files found in directory:\n ",
             file.path(local, buildFolder), "\n 'installWorkshops()' first")
-    remotes <- .readIssues(repository)
+    remotes <- .readIssues(repository, location_url)
     buildout <- remotes[["repository"]] %in% names(statList)
     remotes <- lapply(remotes, `[`, buildout)
     remotes[["buildout"]] <-
