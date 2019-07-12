@@ -78,9 +78,20 @@
     as.data.frame(t(res), stringsAsFactors = FALSE)
 }
 
+.checkDESC <- function(branchdf) {
+    apply(branchdf, 1L, function(x) {
+        RCurl::url.exists(
+            file.path(
+                "https://github.com", x[["ownerrepo"]], "tree",
+                x[["refs"]], "DESCRIPTION"
+            )
+        )
+    })
+}
+
 .warnNoDESC <- function(branchdf) {
     validPKGS <- .checkDESC(branchdf)
-    invalid <- branchdf[!validPKGS, "repos"]
+    invalid <- branchdf[!validPKGS, "ownerrepo"]
     if (length(invalid))
         warning(
             "Repositories without a valid DESCRIPTION file:\n",
@@ -92,30 +103,21 @@
 ## git2r::clone repository first and get local location
 .addRemotes <- function(local_repo, reposrefs) {
     remotes <- apply(reposrefs, 1L, function(line) {
-        if (!identical(line[[2]], "master"))
-            paste(line[[1]], line[[2]], sep = "@")
+        if (!identical(line[["refs"]], "master"))
+            paste(line[["ownerrepo"]], line[["refs"]], sep = "@")
         else
-            line[[1]]
+            line[["ownerrepo"]]
     })
     desc::desc_add_remotes(remotes, local_repo)
 }
 
-.addImports <- function(local_repo, repos) {
-    pkgNames <- basename(repos)
+.addImports <- function(local_repo, pkgnames) {
     descfile <- file.path(local_repo, "DESCRIPTION")
     invisible(
-        lapply(pkgNames, function(pkg) {
+        lapply(pkgnames, function(pkg) {
             desc::desc_set_dep(pkg, type = "Imports", file = descfile)
         })
     )
-}
-
-.checkDESC <- function(branchdf) {
-    apply(branchdf, 1L, function(x) {
-        RCurl::url.exists(
-        file.path("https://github.com", x[[1L]], "tree", x[[2L]], "DESCRIPTION")
-        )
-    })
 }
 
 .installIssues <- function(repos_data, local, ...) {
@@ -197,10 +199,10 @@ getIssueRepos <-
         dir.create(repos_path, recursive = TRUE)
     apply(repos, 1L, function(x) {
         local_repo <- file.path(repos_path, x[["repository"]])
-        if (!dir.exists(local_repo)) {
+        if (!dir.exists(local_repo))
             git2r::clone(url = x[["location"]],
                 local_path = local_repo, branch = x[["refs"]])
-        } else
+        else
             git2r::pull(repo = local_repo)
     })
     repos
@@ -222,18 +224,18 @@ addWorkshops <-
         local_repo = workshopbuilder:::.options$get("LOCAL_REPO")
     )
 {
-        reposREF <- data.frame(ownerrepo="rstudio/bookdown", refs="master")
-        reposinREF <- paste0(
-            reposREF[[1L]],
-            ifelse(reposREF[[2L]] == "master", "", paste0("@", reposREF[[2]]))
-        )
+        bookdown <- data.frame(ownerrepo="rstudio/bookdown", refs="master")
+        branch <- ifelse(reposREF[["refs"]] == "master", "",
+            paste0("@", reposREF[["refs"]]))
+        pkg <- ifelse(reposREF[["Package"]] == reposREF[["repository"]], "",
+            paste0(reposREF[["Package"]], "="))
+        reposinREF <- paste0(pkg, reposREF[["ownerrepo"]], branch)
         localremotes <- .readRemotes(file.path(local_repo, "DESCRIPTION"))
-        newremotes <- !(reposinREF %in% remotes)
+        newremotes <- !(reposinREF %in% localremotes)
         if (any(newremotes)) {
             reposREF <- reposREF[newremotes, , drop = FALSE]
             .addRemotes(local_repo, reposREF)
-            repoNames <- basename(reposREF[[1L]])
-            .addImports(local_repo, repoNames)
+            .addImports(local_repo, reposREF[["Package"]])
         }
         desc::desc(file = local_repo)
 }
