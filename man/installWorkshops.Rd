@@ -7,7 +7,7 @@
 
   installWorkshops(repository = workshopbuilder:::.options$get("BOOK_REPO"),
   local = workshopbuilder:::.options$get("REPOS_PATH"),
-  location = "https://api.github.com/repos/",
+  location_url = "https://api.github.com/repos",
   ncpus = getOption("Ncpus", 1L), ...)
 }
 \arguments{
