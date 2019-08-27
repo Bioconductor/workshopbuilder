@@ -112,8 +112,8 @@
     )
 }
 
-.installIssues <- function(repos_data, local, ...) {
-    builddir <- file.path(local, "buildout")
+.installIssues <- function(repos_data, local, buildDir, ...) {
+    builddir <- file.path(local, buildDir)
     if (!dir.exists(builddir))
         dir.create(builddir)
     res <- apply(repos_data, 1L, function(x) {
@@ -151,6 +151,7 @@
 installWorkshops <-
     function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
         local = workshopbuilder:::.options$get("REPOS_PATH"),
+        buildDir = "buildout",
         location_url = "https://api.github.com/repos",
         ncpus = getOption("Ncpus", 1L), ...)
 {
@@ -158,7 +159,7 @@ installWorkshops <-
     options(Ncpus = ncpus)
     remotes <- .readIssues(repository, location_url)
     remotes <- getIssueRepos(remotes, local)
-    .installIssues(remotes, local, ...)
+    .installIssues(remotes, local, buildDir, ...)
 }
 
 #' @export
@@ -257,11 +258,13 @@ transferVignettes <-
 
 #' @export
 getStatus <- function(local = workshopbuilder:::.options$get("REPOS_PATH"),
-    buildFolder = "buildout") {
-    outReport <- file.path(local, buildFolder)
+    buildDir = "buildout") {
+    outReport <- file.path(local, buildDir)
     reportFiles <- list.files(outReport, full.names = TRUE, pattern = ".out")
     shopnames <- gsub("\\.out", "", basename(reportFiles))
     reportFiles <- setNames(reportFiles, shopnames)
+    if (!length(reportFiles))
+        stop("No files saved in 'buildDir'. Run 'installWorkshops()'")
     lapply(reportFiles, function(txt) {
         lines <- trimws(readLines(txt))
         lines[nchar(lines) != 0L]
@@ -271,11 +274,11 @@ getStatus <- function(local = workshopbuilder:::.options$get("REPOS_PATH"),
 #' @export
 postStatus <- function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
     local = workshopbuilder:::.options$get("REPOS_PATH"),
-    buildFolder = "buildout", location_url = "https://api.github.com/repos") {
-    statList <- Filter(length, getStatus(local, buildFolder))
+    buildDir = "buildout", location_url = "https://api.github.com/repos") {
+    statList <- Filter(length, getStatus(local, buildDir))
     if (!length(statList))
         stop("No install '.out' files found in directory:\n ",
-            file.path(local, buildFolder), "\n 'installWorkshops()' first")
+            file.path(local, buildDir), "\n 'installWorkshops()' first")
     remotes <- .readIssues(repository, location_url)
     buildout <- remotes[["repository"]] %in% names(statList)
     remotes <- lapply(remotes, `[`, buildout)
