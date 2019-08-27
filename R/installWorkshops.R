@@ -134,7 +134,9 @@
         )
         x
     })
-    as.data.frame(t(res), stringsAsFactors = FALSE)
+    res <- as.data.frame(t(res), stringsAsFactors = FALSE)
+    res[["install"]] <- as.logical(res[["install"]])
+    res
 }
 
 #' Install workshops from locations as indicated by main repository
@@ -241,20 +243,42 @@ transferVignettes <-
         repo_path = workshopbuilder:::.options$get("REPOS_PATH")
     )
 {
-    ## build results add a "build" TRUE / FALSE column
-    remotes <- remotes[remotes[["build"]], ]
-    pkgNames <- remotes[["repository"]]
-    vigfiles <- vapply(pkgNames, function(pkg) {
-        vigloc <- file.path(repo_path, pkg, "vignettes")
-        list.files(vigloc, pattern = "\\.[Rr][Mm][Dd]", full.names = TRUE)
-    }, character(1L))
+    ## install results add a "install" TRUE / FALSE column
+    instres <- remotes[["install"]]
+    if (is.null(instres))
+        stop("'install' results column not found in 'remotes' argument")
+    remotes <- remotes[instres, ]
 
-    lapply(vigfiles, function(file) {
-        viglines <- readLines(file)
-        newVig <- file.path(local_repo, file)
-        linerange <- seq(min(grep("^#\\s*\\w+", viglines)), length(viglines))
+    viglist <- Map(c,
+        pkgName = remotes[["Package"]],
+        vignette = vapply(remotes[["repository"]], function(pkg) {
+            vigloc <- file.path(repo_path, pkg, "vignettes")
+            list.files(vigloc, pattern = "\\.[Rr][Mm][Dd]",
+                full.names = TRUE)
+            }, character(1L)
+        )
+    )
+
+    vapply(viglist, function(elem) {
+        pkg <- elem[["pkgName"]]
+        viglines <- suppressWarnings(readLines(elem[["vignette"]]))
+        newVigName <- paste0(pkg, ".Rmd")
+        newVig <- file.path(local_repo, newVigName)
+
+        h1s <- grep("^#\\s*\\w+", viglines)
+        if (!length(h1s)) {
+            h1s <- grep("^##\\s*\\w+", viglines)
+            if (length(h1s))
+                viglines <- gsub("##", "#", viglines, fixed = TRUE)
+            else
+                stop("No H1/H2 ('#', '##') markdown headers found")
+        }
+
+        linerange <- seq(min(h1s), length(viglines))
+
         writeLines(viglines[linerange], con = newVig)
-    })
+        newVig
+    }, character(1L))
 }
 
 #' @export
@@ -273,9 +297,11 @@ getStatus <- function(local = workshopbuilder:::.options$get("REPOS_PATH"),
 }
 
 #' @export
-postStatus <- function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
+postStatus <- function(
+    repository = workshopbuilder:::.options$get("BOOK_REPO"),
     local = workshopbuilder:::.options$get("REPOS_PATH"),
     buildDir = "buildout", location_url = "https://api.github.com/repos") {
+
     statList <- Filter(length, getStatus(local, buildDir))
     if (!length(statList))
         stop("No install '.out' files found in directory:\n ",
