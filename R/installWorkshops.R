@@ -153,9 +153,10 @@ installWorkshops <-
         local = workshopbuilder:::.options$get("REPOS_PATH"),
         buildDir = "buildout",
         location_url = "https://api.github.com/repos",
-        ncpus = getOption("Ncpus", 1L), ...)
+        ncpus = 1L, ...)
 {
-    on.exit(options(Ncpus = options("Ncpus")))
+    ncp <- getOption("Ncpus", 1L)
+    on.exit(options(Ncpus = ncp))
     options(Ncpus = ncpus)
     remotes <- .readIssues(repository, location_url)
     remotes <- getIssueRepos(remotes, local)
