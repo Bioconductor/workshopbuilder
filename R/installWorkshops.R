@@ -305,3 +305,10 @@ postStatus <- function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
 .getToken <- function() {
     Sys.getenv("GITHUB_TOKEN", Sys.getenv("GITHUB_PAT", ""))
 }
+
+.cleanBuildReport <-
+    function(local = workshopbuilder:::.options$get("REPOS_PATH"),
+        buildDir = "buildout") {
+    outReport <- file.path(local, buildDir)
+    unlink(outReport, recursive = TRUE)
+}
