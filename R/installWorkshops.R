@@ -119,12 +119,12 @@
     res <- apply(repos_data, 1L, function(x) {
         capture.output({
             tryCatch({
-                x[["build"]] <- FALSE
+                x[["install"]] <- FALSE
                 BiocManager::install(x[["ownerrepo"]], ref = x[["refs"]],
                     build_opts = c("--no-resave-data", "--no-manual"),
                     dependencies = TRUE, build_vignettes = TRUE, ask = FALSE,
                     ...)
-                x[["build"]] <- TRUE
+                x[["install"]] <- TRUE
                 }, error = function(e) {
                     warning("Unable to install package: ", x[["ownerrepo"]],
                         "\n", conditionMessage(e))
