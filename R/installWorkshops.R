@@ -169,13 +169,16 @@ installWorkshops <-
 cloneBookRepo <-
     function(
         repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        local_repo = workshopbuilder:::.options$get("LOCAL_REPO")
+        local_repo = workshopbuilder:::.options$get("LOCAL_REPO"),
+        location_url = "https://github.com"
     )
 {
-    if (!dir.exists(local_repo))
+    if (!dir.exists(local_repo)) {
         dir.create(local_repo, recursive = TRUE)
-    urlStart <- "https://github.com"
-    git2r::clone(file.path(urlStart, repository), local_repo)
+        git2r::clone(file.path(location_url, repository), local_repo)
+    } else
+        git2r::pull(repo = local_repo)
+
     current <- workshopbuilder:::.options$get("LOCAL_REPO")
 
     if (!identical(local_repo, current))
@@ -203,7 +206,6 @@ getIssueRepos <-
     })
     repos
 }
-
 
 #' @export
 getWorkshops <-

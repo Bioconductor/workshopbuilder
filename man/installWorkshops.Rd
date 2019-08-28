@@ -7,8 +7,8 @@
 
   installWorkshops(repository = workshopbuilder:::.options$get("BOOK_REPO"),
   local = workshopbuilder:::.options$get("REPOS_PATH"),
-  location_url = "https://api.github.com/repos",
-  ncpus = getOption("Ncpus", 1L), ...)
+  buildDir = "buildout", location_url = "https://api.github.com/repos",
+  ncpus = 1L, ...)
 }
 \arguments{
 \item{repository}{A single string indicating the 'username/repository' of the
