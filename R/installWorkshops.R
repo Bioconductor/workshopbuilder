@@ -340,3 +340,21 @@ postStatus <- function(
     outReport <- file.path(local, buildDir)
     unlink(outReport, recursive = TRUE)
 }
+
+#' @export
+addRmdFiles <- function(rmdlist,
+    local = workshopbuilder:::.options$get("LOCAL_REPO"), verbose = TRUE) {
+
+    yamlpath <- file.path(local, "_bookdown.yml")
+    bdyam <- yaml::read_yaml(yamlpath)
+    bdyam <- bdyam[names(bdyam) != "rmd_files"]
+
+    ## ToDo: add Rmd file ordering here
+    rmds <- basename(unname(rmdlist))
+    newyam <- c(bdyam, list(rmd_files = rmds))
+    yaml::write_yaml(newyam, file = yamlpath)
+
+    if (verbose)
+        message(yaml::as.yaml(newyam))
+}
+
