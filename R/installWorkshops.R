@@ -166,7 +166,7 @@ installWorkshops <-
 }
 
 #' @export
-cloneBookRepo <-
+getBookRepo <-
     function(
         repository = workshopbuilder:::.options$get("BOOK_REPO"),
         local_repo = workshopbuilder:::.options$get("LOCAL_REPO"),
