@@ -4,18 +4,30 @@
 \alias{installWorkshops}
 \title{Install workshops from locations as indicated by main repository}
 \usage{
-
-  installWorkshops(repository = workshopbuilder:::.options$get("BOOK_REPO"),
+installWorkshops(workshops = NULL, exclude = FALSE,
+  repository = workshopbuilder:::.options$get("BOOK_REPO"),
   local = workshopbuilder:::.options$get("REPOS_PATH"),
-  buildDir = "buildout", location_url = "https://api.github.com/repos",
-  ncpus = 1L, ...)
+  buildDir = "buildout", ncpus = 1L, ...)
 }
 \arguments{
+\item{workshops}{character() An optional vector of workshop repositories to
+install. Default behavior installs all workshops.}
+
+\item{exclude}{logical(1) Whether to include or exclude the workshops
+listed in the argument from the full list of workshops (default FALSE)}
+
 \item{repository}{A single string indicating the 'username/repository' of the
 main book-building GitHub repository (defaults to package option
 'BOOK_REPO')}
 
-\item{location}{Website location of the main repository (default 'github')}
+\item{local}{character(1) The folder location for all cloned workshop
+repositories}
+
+\item{buildDir}{character(1) The folder location for all workshop build
+reports (within the 'local' folder)}
+
+\item{ncpus}{integer(1) The number of CPUs to use for the building and
+installation of workshop repositories (default: 1L)}
 }
 \description{
 This function looks at the 'issues' page of the main repository and installs

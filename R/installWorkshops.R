@@ -1,11 +1,15 @@
+# API location of the workshop repositories
+.github_repos <- "https://api.github.com/repos"
+.github_url <- "https://github.com"
+
 .readRemotes <- function(descfile) {
     dcf <- read.dcf(descfile, "Remotes")
     trimws(strsplit(dcf, "[, \n]+")[[1L]])
 }
 
 .getIssues <-
-    function(repository, location_url = "https://api.github.com/repos") {
-    endpoint <- file.path(location_url, repository, "issues")
+    function(repository) {
+    endpoint <- file.path(.github_repos, repository, "issues")
     ## assume there are only two pages
     unlist(lapply(1:2, function(n)
         httr::content(httr::GET(paste0(endpoint, "?page=", n)))
@@ -43,9 +47,9 @@
 }
 
 .readIssues <-
-    function(repository, location_url, fields = c("body", "title", "number"),
+    function(repository, fields = c("body", "title", "number"),
         local_repos = workshopbuilder:::.options$get("REPOS_PATH")) {
-    issues <- .getIssues(repository, location_url)
+    issues <- .getIssues(repository)
     issues <- do.call(function(...) {
         rbind.data.frame(..., stringsAsFactors = FALSE) },
         lapply(issues, `[`, fields)
@@ -117,20 +121,18 @@
     if (!dir.exists(builddir))
         dir.create(builddir)
     res <- apply(repos_data, 1L, function(x) {
-        capture.output({
-            tryCatch({
-                x[["install"]] <- FALSE
-                BiocManager::install(x[["ownerrepo"]], ref = x[["refs"]],
-                    build_opts = c("--no-resave-data", "--no-manual"),
-                    dependencies = TRUE, build_vignettes = TRUE, ask = FALSE,
-                    ...)
-                x[["install"]] <- TRUE
-                }, error = function(e) {
-                    warning("Unable to install package: ", x[["ownerrepo"]],
-                        "\n", conditionMessage(e))
-                })
-            }, file = file.path(builddir, paste0(x[["repository"]], ".out")),
-            type = "output"
+        xx <- system2(file.path(R.home(), "bin/R"),
+            args = paste("CMD INSTALL", file.path(local, x[["repository"]])),
+            stdout = TRUE, stderr = TRUE)
+        if (any(grepl("DONE", xx))) {
+            msg <- xx
+            x[["install"]] <- TRUE
+        } else if (attr(xx, "status") != 0) {
+            msg <- paste0("Unable to install package: ", x[["ownerrepo"]])
+            x[["install"]] <- FALSE
+        }
+        writeLines(text = msg,
+            con = file.path(builddir, paste0(x[["repository"]], ".out"))
         )
         x
     })
@@ -143,25 +145,43 @@
 #'
 #' This function looks at the 'issues' page of the main repository and installs
 #' from the workshop URLs tagged as `[Workshop]`
-#   '
+#'
+#' @param workshops character() An optional vector of workshop repositories to
+#'     install. Default behavior installs all workshops.
+#' @param exclude logical(1) Whether to include or exclude the workshops
+#'     listed in the argument from the full list of workshops (default FALSE)
 #' @param repository A single string indicating the 'username/repository' of the
-#'   main book-building GitHub repository (defaults to package option
-#'   'BOOK_REPO')
-#' @param location Website location of the main repository (default 'github')
+#'     main book-building GitHub repository (defaults to package option
+#'     'BOOK_REPO')
+#' @param local character(1) The folder location for all cloned workshop
+#'     repositories
+#' @param buildDir character(1) The folder location for all workshop build
+#'     reports (within the 'local' folder)
+#' @param ncpus integer(1) The number of CPUs to use for the building and
+#'     installation of workshop repositories (default: 1L)
 #'
 #' @export
 installWorkshops <-
-    function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
+    function(workshops = NULL, exclude = FALSE,
+        repository = workshopbuilder:::.options$get("BOOK_REPO"),
         local = workshopbuilder:::.options$get("REPOS_PATH"),
         buildDir = "buildout",
-        location_url = "https://api.github.com/repos",
         ncpus = 1L, ...)
 {
     ncp <- getOption("Ncpus", 1L)
     on.exit(options(Ncpus = ncp))
     options(Ncpus = ncpus)
-    remotes <- .readIssues(repository, location_url)
+    remotes <- .readIssues(repository)
     remotes <- getIssueRepos(remotes, local)
+    if (!is.null(workshops)) {
+        keep <- remotes[["repository"]] %in% workshops
+        if (!any(keep))
+            stop("'workshops' not found in repositories list")
+        if (exclude)
+            keep <- !keep
+        remotes <- remotes[keep, , drop = FALSE]
+    }
+
     .installIssues(remotes, local, buildDir, ...)
 }
 
@@ -169,13 +189,12 @@ installWorkshops <-
 getBookRepo <-
     function(
         repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        local_repo = workshopbuilder:::.options$get("LOCAL_REPO"),
-        location_url = "https://github.com"
+        local_repo = workshopbuilder:::.options$get("LOCAL_REPO")
     )
 {
     if (!dir.exists(local_repo)) {
         dir.create(local_repo, recursive = TRUE)
-        git2r::clone(file.path(location_url, repository), local_repo)
+        git2r::clone(file.path(.github_url, repository), local_repo)
     } else
         git2r::pull(repo = local_repo)
 
@@ -209,10 +228,9 @@ getIssueRepos <-
 
 #' @export
 getWorkshops <-
-    function(repository = workshopbuilder:::.options$get("BOOK_REPO"),
-        location_url = "https://api.github.com/repos")
+    function(repository = workshopbuilder:::.options$get("BOOK_REPO"))
 {
-    remotes <- .readIssues(repository, location_url)
+    remotes <- .readIssues(repository)
     .warnNoDESC(remotes)
 }
 
@@ -223,6 +241,7 @@ addWorkshops <-
     )
 {
         bookdown <- data.frame(ownerrepo="rstudio/bookdown", refs="master")
+        reposREF <- reposREF[reposREF[["install"]], ]
         branch <- ifelse(reposREF[["refs"]] == "master", "",
             paste0("@", reposREF[["refs"]]))
         pkg <- ifelse(reposREF[["Package"]] == reposREF[["repository"]], "",
@@ -256,10 +275,14 @@ transferVignettes <-
         vignette = vapply(remotes[["repository"]], function(pkg) {
             vigloc <- file.path(repo_path, pkg, "vignettes")
             list.files(vigloc, pattern = "\\.[Rr][Mm][Dd]",
-                full.names = TRUE)
+                full.names = TRUE)[1L]
             }, character(1L)
         )
     )
+
+    resources <- list.files(
+        path = file.path(repo_path, remotes[["Package"]], "inst"),
+        pattern = "[^Rmd]", recursive = TRUE)
 
     vapply(viglist, function(elem) {
         pkg <- elem[["pkgName"]]
@@ -302,13 +325,13 @@ getStatus <- function(local = workshopbuilder:::.options$get("REPOS_PATH"),
 postStatus <- function(
     repository = workshopbuilder:::.options$get("BOOK_REPO"),
     local = workshopbuilder:::.options$get("REPOS_PATH"),
-    buildDir = "buildout", location_url = "https://api.github.com/repos") {
+    buildDir = "buildout") {
 
     statList <- Filter(length, getStatus(local, buildDir))
     if (!length(statList))
         stop("No install '.out' files found in directory:\n ",
             file.path(local, buildDir), "\n 'installWorkshops()' first")
-    remotes <- .readIssues(repository, location_url)
+    remotes <- .readIssues(repository)
     buildout <- remotes[["repository"]] %in% names(statList)
     remotes <- lapply(remotes, `[`, buildout)
     remotes[["buildout"]] <-
@@ -358,3 +381,19 @@ addRmdFiles <- function(rmdlist,
         message(yaml::as.yaml(newyam))
 }
 
+#' @export
+renderWorkshops <-
+    function(local = workshopbuilder:::.options$get("LOCAL_REPO"),
+    format = c("all", "gitbook", "pdf_book", "epub_book")) {
+
+    curr <- getwd()
+    setwd(local)
+    on.exit(setwd(curr))
+    format <- match.arg(format, several.ok = TRUE)
+    if ("all" %in% format)
+        format <- c("gitbook", "pdf_book", "epub_book")
+
+    for (fmt in format)
+        bookdown::render_book("index.Rmd", paste0("bookdown::", fmt))
+
+}
