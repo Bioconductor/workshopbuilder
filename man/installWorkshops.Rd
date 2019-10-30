@@ -13,7 +13,7 @@ installWorkshops(workshops = NULL, exclude = FALSE,
 \item{workshops}{character() An optional vector of workshop repositories to
 install. Default behavior installs all workshops.}
 
-\item{exclude}{logical(1) Whether to include or exclude the workshops
+\item{exclude}{logical(1) Whether to include or exclude the workshop(s)
 listed in the argument from the full list of workshops (default FALSE)}
 
 \item{repository}{A single string indicating the 'username/repository' of the
@@ -23,8 +23,8 @@ main book-building GitHub repository (defaults to package option
 \item{local}{character(1) The folder location for all cloned workshop
 repositories}
 
-\item{buildDir}{character(1) The folder location for all workshop build
-reports (within the 'local' folder)}
+\item{buildDir}{character(1) The folder location for all workshop
+installation reports (within the 'local' folder)}
 
 \item{ncpus}{integer(1) The number of CPUs to use for the building and
 installation of workshop repositories (default: 1L)}
