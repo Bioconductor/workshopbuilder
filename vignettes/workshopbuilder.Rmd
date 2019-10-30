@@ -1,0 +1,183 @@
+---
+title: "Building Bioconductor workshops workflow"
+author:
+- name: Marcel Ramos
+  affiliation: Roswell Park Cancer Institute, Buffalo, NY
+date: "`r format(Sys.Date(), '%A, %B %d, %Y')`"
+vignette: |
+  %\VignetteIndexEntry{workshopbuilder}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output:
+  BiocStyle::html_document:
+    toc_float: true
+Package: workshopbuilder
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# Installation
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Bioconductor/workshopbuilder")
+```
+
+```{r,eval=TRUE,echo=FALSE}
+.options <- workshopbuilder:::.options
+```
+
+# Set up
+
+`workshopbuilder` ships with a number of package options to make management
+of workshop directories and repositories easier. The three main options are:
+
+1) Workshop book repository location on GitHub
+
+
+```{r, eval=TRUE}
+.options$set("BOOK_REPO", "Bioconductor/BiocWorkshops2019")
+```
+
+2) Local workshop book directory
+
+```{r, eval=TRUE}
+.options$set("LOCAL_REPO", normalizePath("~/BiocWorkshops2019"))
+```
+
+3) Local workshop repositories directory
+
+```{r, eval=TRUE}
+.options$set("REPOS_PATH", normalizePath("~/Bioconductor/Workshops"))
+```
+
+# Workflow Overview
+
+The `workshopbuilder` package facilitates the installation and rendering
+of the workshop book repository along with all the component repositories.
+
+The individual workshop repositories are documented as GitHub issues in
+the main workshop book repository.
+
+We then take the workshops and the main book repository and clone them all.
+We install and transfer vignettes to the main book repository and run a
+render step to generate the book document.
+
+## Read the issues from the repository issues comments
+
+`workshopbuilder` takes issues with a `[Workshop]` tag and pulls workshops
+from the URL provided in the body of the issue.
+
+## Clone the workshop repositories (`pull` if already available)
+
+The package uses `git2r` to clone all invididual workshop repositories
+(or those otherwise indicated) to the location as specified by the `REPOS_PATH`
+package option (see setup).
+
+
+## Install the workshops
+
+```{r,eval=TRUE,include=TRUE,results="hide",message=FALSE,warning=FALSE}
+library(workshopbuilder)
+```
+
+```{r}
+shopstatus <- installWorkshops("MultiAssayWorkshop",
+    exclude = FALSE, ncpus = 12)
+```
+
+## Run `R CMD INSTALL *` on each repository
+
+The output of the installation can be seen by using `getStatus`:
+
+```{r}
+getStatus()
+```
+
+## (optional) Post repository installation status
+
+The text of the installation output can be posted as a comment in the
+issue by running `postStatus`.
+
+_Note_. This requires a `GITHUB_PAT` Personal Authentication Token (PAT)
+environment variable (usually in `.Renviron`).
+
+```{r}
+postStatus()
+```
+
+## Inspect the `data.frame` with metadata for each workshop repository
+
+This `data.frame` includes metadata including the issue number and
+URL location
+
+```{r}
+shopstatus
+```
+
+## Capture the output of the installation and save to a file
+
+Installation output is saved to a file in the `REPOS_PATH` folder; defaults
+to "buildout".
+
+```{r}
+list.files(
+    file.path(.options$get("REPOS_PATH"), "buildout")
+)
+```
+
+## Clone the main workshop book repository
+
+This can be done by running the `getBookRepo` function. It will take the
+`BOOK_REPO` package value and clone from GitHub.
+
+```{r}
+getBookRepo()
+```
+
+## Add workshops to the DESCRIPTION file
+
+Using the `desc` package, we then add all the successfully installed workshops
+to the `DESCRIPTION` file of the book repository.
+
+Notice that `shopstatus` has a logical column that indicates a successful
+installation called 'install'.
+
+```{r}
+addWorkshops(shopstatus)
+```
+
+## Transfer vignettes to the main workshop book repository
+
+We then transfer all successful workshop Rmd files to the main book repository
+for building.
+
+```{r}
+rmds <- transferVignettes(shopstatus)
+```
+
+## Include the `Rmd` files in the configuration file for book building
+
+We make sure to document the added R Markdown files in the `_bookdown.yml`
+configuration file.
+
+```{r}
+addRmdFiles(rmds)
+```
+
+## Render the book
+
+The configuration files that are pre-included in the workshop book repository
+allow the book to build. In the future, we may consider adding this step
+via the R interface. We use these files to render the book into the different
+formats depending on the input to the `renderWorkshops` format.
+
+```{r}
+renderWorkshops(format = "all")
+```
+repo)
+
