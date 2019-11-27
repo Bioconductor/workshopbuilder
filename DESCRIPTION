@@ -17,7 +17,7 @@ Description: This package takes a series of workshop R packages and combines
     them into an authorized repository location. This will be the basis for
     a workshop bookdown build.
 Depends:
-    R (>= 3.6.0), R (< 3.7.0)
+    R (>= 3.5.0)
 Imports:
     BiocManager,
     git2r,
@@ -31,4 +31,4 @@ Suggests:
     testthat
 License: Artistic-2.0
 Encoding: UTF-8
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.0

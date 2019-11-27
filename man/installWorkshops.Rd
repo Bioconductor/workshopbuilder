@@ -4,10 +4,15 @@
 \alias{installWorkshops}
 \title{Install workshops from locations as indicated by main repository}
 \usage{
-installWorkshops(workshops = NULL, exclude = FALSE,
+installWorkshops(
+  workshops = NULL,
+  exclude = FALSE,
   repository = workshopbuilder:::.options$get("BOOK_REPO"),
   local = workshopbuilder:::.options$get("REPOS_PATH"),
-  buildDir = "buildout", ncpus = 1L, ...)
+  buildDir = "buildout",
+  ncpus = 1L,
+  ...
+)
 }
 \arguments{
 \item{workshops}{character() An optional vector of workshop repositories to
